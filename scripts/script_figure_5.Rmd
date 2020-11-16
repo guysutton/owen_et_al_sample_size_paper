@@ -1,0 +1,121 @@
+---
+title: "Owen et al. - Figure 5"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+This script will reproduce Figure 5 from *Owen et al. - Sample size planning for insect critical thermal limits studies*. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load required packages 
+
+```{r packages, message = FALSE, warning = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, 
+               tidyr,
+               readr,
+               data.table,
+               viridis,
+               here)
+
+# Load ThermalSampleR package
+# To download on first use, remove # from line below 
+# devtools::install_github("CJMvS/ThermalSampleR")
+library(ThermalSampleR)
+```
+
+### Set ggplot theme (makes nice plots)
+
+```{r plot_defaults, warning = FALSE}
+theme_set(theme_classic() +
+            theme(panel.border = element_rect(colour = "black", fill = NA),
+                  axis.text = element_text(colour = "black"),
+                  axis.title.x = element_text(margin = unit(c(2, 0, 0, 0), "mm")),
+                  axis.title.y = element_text(margin = unit(c(0, 4, 0, 0), "mm")),
+                  legend.position = "none"))
+```
+
+### Load raw thermal limits data 
+
+```{r load_data, message = FALSE}
+# Also, load raw data (without CI's)
+raw_data <- readr::read_csv(here::here("./data_clean/ct_min_data_clean.csv"))
+
+# Make insect_sp column into a factor 
+raw_data <- raw_data %>%
+  dplyr::mutate(col = as.factor(insect_sp))
+```
+
+### Perform analysis
+
+Here, let's subset the data to only the first 15 individuals tested per *Eccritotarsus* species, perform bootstrap re-sampling of the data, and calculate summary statistics to evaluate whether testing additional individuals is required for this experiment.  
+
+Keep in mind that the aim of this experiment was to evaluate if *Eccritotarsus eichhorniae* has a lower CTmin than *Eccritotarsus catarinensis*, as *E. eichhorniae* needs to be able to tolerate the cold temperatures at inland sites, where the current biocontrol agent (*E. catarinensis*) performs sub-optimally. 
+
+```{r process_data, message = FALSE}
+# Subset data 
+raw_data_ex <- raw_data %>%
+  dplyr::filter(insect_sp %in% c("Eccritotarsus catarinensis_QTG",
+                                 "Eccritotarsus eichhorniae_QTG"))
+
+# Let's assume we only had the first 15 samples (n = 15), for each species
+raw_data_ex <- raw_data_ex %>%
+  dplyr::filter(between(sample_size, 1, 15))
+
+# Check subset worked (n = 15 per species)
+raw_data_ex %>% dplyr::count(insect_sp)
+```
+
+### Use `ThermalSampleR` to evaluate sample size required 
+
+```{r bootstrap}
+# Set reproducible seed 
+set.seed(2012)
+
+# Perform bootstrap re-sampling
+sims_15 <- ThermalSampleR::boot_two(
+  # Data frame containing raw thermal limits data
+  data = raw_data_ex,
+  # Column name containing species ID's 
+  groups_col = col,
+  # Name of first species
+  group1 = "Eccritotarsus catarinensis_QTG",
+  # Name of second species
+  group2 = "Eccritotarsus eichhorniae_QTG",
+  # Column name of thermal limits data
+  response= ct_val,
+  # Sample size to extrapolate towards
+  n_max = 50,
+  # Number of bootstrap iterations
+  iter = 499)
+
+```
+
+### Make figure 
+
+```{r make_figure}
+# Plot bootstrap samples 
+fig5 <- ThermalSampleR::plot_two_groups(
+  # Data frame containing bootstrap re-samples
+  x = sims_15,
+  # Minimum number of samples to evaluate 
+  n_min = 3,
+  # How many individuals were tested? 
+  n_max = 15,
+  legend.position = c(0.7, 0.2)) 
+fig5
+```
+
+### Save figure to PC   
+
+```{r save_figure}
+# Save figure to file 
+ggplot2::ggsave(here::here("./figures/figure5.png"), 
+                width = 6, 
+                height = 6)
+```
