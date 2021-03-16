@@ -4,6 +4,7 @@ output:
   pdf_document: default
   html_document:
     df_print: paged
+  word_document: default
 ---
 
 This script will reproduce Figure 3 from *Owen et al. - Sample size planning for insect critical thermal limits studies*. 
@@ -48,11 +49,63 @@ boot_tci <- boot_tci %>%
   dplyr::mutate(insect_sp = as.factor(insect_sp))
 ```
 
+### Plot width of CI
+
+```{r fig_3a}
+# Add width of CI to boostrapped data
+ci_width_bs <- boot_tci %>%
+  dplyr::mutate(
+    # Calculate 95% CI width 
+    w_ci = upper_ci - lower_ci) %>%
+  # Summarise mean values across each species and sample size 
+  dplyr::group_by(insect_sp, sample_size) %>%
+  dplyr::summarise(
+    # Calculate mean 95% CI width
+    ci_mean = mean(w_ci, na.rm = TRUE),
+    # Calculate standard deviation of 95% CI width
+    ci_sd   = sd(w_ci, na.rm = TRUE),
+    # Calculate standard error of 95% CI width
+    ci_se   = ci_mean/sqrt(sample_size),
+    # Calculate mean - 1 se of 95% CI width
+    lower_se       = mean(ci_mean - ci_se),
+    # Calculate mean + 1 se of 95% CI width
+    upper_se       = mean(ci_mean + ci_se)) %>%
+  # Keep a single row per insect_sp + sample_size 
+  dplyr::slice(1) %>%
+  dplyr::ungroup() %>%
+  # Now average over all species
+  dplyr::group_by(sample_size) %>%
+  dplyr::summarise(ci_mean = mean(ci_mean),
+                   ci_sd   = mean(ci_sd),
+                   lower_se       = mean(lower_se),
+                   upper_se       = mean(upper_se)) %>%
+  dplyr::mutate(ci_se = ci_sd/sample_size)
+
+# Plot relationship - averaged across species (focused y axis)
+fig_3a <- ci_width_bs %>%
+  # Remove n = 3 for visualisation (when mean > 2, R removes the entire line)
+  dplyr::filter(sample_size > 3) %>%
+  ggplot(data = ., aes(x = sample_size,
+                       y = ci_mean)) +
+  geom_ribbon(aes(ymin = lower_se,
+                  ymax = upper_se),
+              fill = "gray80") +
+  geom_line() +
+  scale_y_continuous(breaks = seq(0, 8, 2),
+                     limits = c(0, 8)) +
+  labs(x = "Sample size (n)",
+       subtitle = "(a)",
+       y = "Width of 95% CI (°C)")
+fig_3a
+```
+
 ### Perform analysis
 
 Here, we calculate the change in the width of the 95% confidence interval (CI) of the CTmin estimate for each species, and then average over all species in our dataset. 
 
-```{r analysis, message = FALSE}
+# Make figure
+
+```{r analysis, echo = TRUE}
 # Calculate change in width of CI, averaged across all species 
 ci_width_change <- boot_tci %>%
   dplyr::mutate(
@@ -79,15 +132,13 @@ ci_width_change <- boot_tci %>%
   # Now average over all species
   dplyr::group_by(sample_size) %>%
   dplyr::summarise(ci_change_mean = mean(ci_change_mean),
+                   ci_change_sd   = mean(ci_change_sd),
                    lower_se       = mean(lower_se),
-                   upper_se       = mean(upper_se))
-```
+                   upper_se       = mean(upper_se))%>%
+  dplyr::mutate(ci_se = ci_change_sd/sample_size)
 
-### Make figure 
-
-```{r fig3}
 # Plot relationship - averaged across species (focused y axis)
-ci_width_change %>%
+fig_3b <- ci_width_change %>%
   # Set mean and upper se upper limit to 2 for ease of visualisation 
   dplyr::mutate(upper_se = dplyr::if_else(upper_se > 2, 
                                           2, 
@@ -106,14 +157,24 @@ ci_width_change %>%
   scale_y_continuous(breaks = seq(0, 2, 0.25), 
                      limits = c(0, 2)) +
   labs(x = "Sample size (n)",
-       y = "Change in width of 95% CI (°C)") 
+       subtitle = "(b)",
+       y = "Change in width of 95% CI (°C)")
+fig_3b
+```
 
+### Put the two plots together in one graph
+
+```{r message = FALSE, warning = FALSE}
+# Put together 
+fig3 <- cowplot::plot_grid(fig_3a, 
+                           fig_3b,
+                           ncol = 2)
+fig3
 ```
 
 ```{r save_figure}
 # Save figure to file 
-ggplot2::ggsave(here::here("./figures/ci_ctmin_ci_ci_width_all_species_focus.png"), 
-                width = 6, 
-                height = 6)
+ggplot2::ggsave(here::here("./figures/figure_3.png"), 
+                width = 8, 
+                height = 5)
 ```
-

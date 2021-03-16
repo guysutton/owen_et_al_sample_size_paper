@@ -87,8 +87,6 @@ bootstrap_cover <- boot_tci %>%
   dplyr::slice(1)
 head(bootstrap_cover)
 
-a <- bootstrap_cover %>%
-  
 #####################################################################
 # Plot coverage of pop. parameter (i.e. CTmin), individual species --
 #####################################################################
@@ -96,8 +94,9 @@ a <- bootstrap_cover %>%
 # Plot across all species 
 ggplot(data = bootstrap_cover, aes(x = sample_size,
                                    y = prop_correct,
-                                   group = insect_sp)) + 
-  geom_line(colour = "gray50") +
+                                   colour = insect_sp)) + 
+  geom_line() +
+  scale_colour_grey() + 
   #scale_color_viridis(discrete = TRUE, option = "C") +
   labs(x = "Sample size (n)",
        y = "95% CI coverage\n (Proportion containing population parameter)",
@@ -105,12 +104,13 @@ ggplot(data = bootstrap_cover, aes(x = sample_size,
   scale_y_continuous(breaks = c(0.7, 0.75, 
                                 0.8, 0.85, 0.9, 0.95, 1.00), 
                      limits = c(0.7, 1)) + 
-  geom_hline(yintercept = 0.95, linetype = "dashed") 
+  geom_hline(yintercept = 0.95, linetype = "dashed") + 
+  facet_wrap(~ insect_sp)
 
 # Save figure to file 
-ggsave("./figures/ci_ctmin_ci_coverage.png", 
-       width = 6, 
-       height = 6)
+ggsave("./figures/figure_s1.png", 
+       width = 20, 
+       height = 12)
 
 #####################################################################
 # Plot coverage of pop. parameter (i.e. CTmin), pooled species --

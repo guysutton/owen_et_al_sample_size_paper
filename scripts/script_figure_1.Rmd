@@ -246,7 +246,7 @@ fig1
 
 ```{r save_plot}
 # Save figure to file 
-ggplot2::ggsave(here::here("./figures/figure1.png"), 
+ggplot2::ggsave(here::here("./figures/figure_1.png"), 
                 width = 8, 
                 height = 5)
 ```

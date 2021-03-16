@@ -1,12 +1,12 @@
 ---
-title: "Owen et al. - Figure 2"
+title: "Owen et al. - Figure S1"
 output:
   pdf_document: default
   html_document:
     df_print: paged
 ---
 
-This script will reproduce Figure 2 from *Owen et al. - Sample size planning for insect critical thermal limits studies*.  
+This script will reproduce Figure S1 from *Owen et al. - Sample size planning for insect critical thermal limits studies*.  
 
 *Warning: This script takes 5 - 10 minutes to run on my PC.* 
 
@@ -52,10 +52,10 @@ boot_tci <- boot_tci %>%
 
 ### Perform analysis  
 
-We have already calculated median CTmin values per species (median for n = 30; max. sample size in our study) in script 01.Following Pearson and Groves (2013), we assumed that our maximum sample size (n = 30) is a reasonable approximation of the actual critical thermal limit value (population parameter)
+We have already calculated median CTmin values per species (median for n = 30; max. sample size in our study) in script 01. Following Pearson and Groves (2013), we assumed that our maximum sample size (n = 30) is a reasonable approximation of the actual critical thermal limit value (population parameter)
 i.e. if we hypothetically had sampled the entire population. Obviously, we must interpret these data with caution, as there is no possible way to 100% accurately determine the population parameter, so we must derive an *ESTIMATE*.  
 
-'Coverage' refers to the proportion of bootstrap resamples for which the estimated population parameter falls within the bounds of a 95% confidence interval. Coverage provides an estimate of parameter accuracy. 
+'Coverage' refers to the proportion of bootstrap resamples for which the estimated population parameter falls within the bounds of a 95% confidence interval. Coverage provides an estimate of parameter accuracy. Here, we calculate coverage per population of a species that was tested. 
 
 ```{r calc_coverage, message = FALSE}
 # Calculate the proportion of times the median_pop_val falls 
@@ -75,53 +75,30 @@ bootstrap_cover <- boot_tci %>%
   dplyr::slice(1)
 ```
 
-```{r calc_coverage_ci, message = FALSE}
-# Manually calculate binomial confidence intervals
-bin_prop_ci <- as_tibble(cbind(bootstrap_cover, 
-                               Hmisc::binconf(bootstrap_cover$n_correct, 
-                                              bootstrap_cover$max_n)))
-
-# Extract binconf output 
-aa <- as_tibble(bin_prop_ci$...15)
-
-# Add binconf output back to bootstrap samples 
-bin_prop_ci <- dplyr::bind_cols(bin_prop_ci, aa) %>%
-  dplyr::select(insect_sp, 
-                sample_size, 
-                prop_correct = PointEst,
-                lower_ci = Lower,
-                upper_ci = Upper)
-```
-
 ### Make figure 
 
 ```{r fig2, message = FALSE}
-# Plot relationship - averaged across species (focused y axis)
-bin_prop_ci %>%
-  dplyr::group_by(sample_size) %>%
-  dplyr::summarise(prop_correct = mean(prop_correct),
-                   lower_ci = mean(lower_ci),
-                   upper_ci = mean(upper_ci)) %>%
-  ggplot(data = ., aes(x = sample_size,
-                       y = prop_correct)) + 
-  geom_ribbon(aes(ymin = lower_ci,
-                  ymax = upper_ci),
-              fill = "gray80") + 
+# Plot across all species 
+ggplot(data = bootstrap_cover, aes(x = sample_size,
+                                   y = prop_correct,
+                                   colour = insect_sp)) + 
   geom_line() +
+  scale_colour_grey() + 
+  #scale_color_viridis(discrete = TRUE, option = "C") +
   labs(x = "Sample size (n)",
        y = "95% CI coverage\n (Proportion containing population parameter)",
        subtitle = " ") +
-  scale_y_continuous(breaks = c(0.8, 0.85, 0.9, 0.95, 1.00), 
-                     limits = c(0.8, 1)) + 
-  geom_hline(yintercept = 0.95, linetype = "dashed") +
-  geom_hline(yintercept = 0.90, linetype = "dotted")
+  scale_y_continuous(breaks = c(0.7, 0.75, 
+                                0.8, 0.85, 0.9, 0.95, 1.00), 
+                     limits = c(0.7, 1)) + 
+  geom_hline(yintercept = 0.95, linetype = "dashed") + 
+  facet_wrap(~ insect_sp)
 
 ```
 
 ```{r save_figure}
 # Save figure to file 
-ggplot2::ggsave(here::here("./figures/figure_2.png"), 
-                dpi = 600,
-                width = 6, 
-                height = 5)
+ggsave(here::here("./figures/figure_s1.png"), 
+       width = 20, 
+       height = 12)
 ```

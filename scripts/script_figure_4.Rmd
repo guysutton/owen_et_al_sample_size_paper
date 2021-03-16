@@ -1,12 +1,12 @@
 ---
-title: "Owen et al. - Figure 6"
+title: "Owen et al. - Figure 4"
 output:
   pdf_document: default
   html_document:
     df_print: paged
 ---
 
-This script will reproduce Figure 6 from *Owen et al. - Sample size planning for insect critical thermal limits studies*. 
+This script will reproduce Figure 4 from *Owen et al. - Sample size planning for insect critical thermal limits studies*. 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -53,26 +53,27 @@ raw_data <- raw_data %>%
 
 ### Perform analysis
 
-Here, let's subset the data to only the first 20 individuals tested for False Codling Moth (*Thaumatotibia leucotreta*) (FCM) fed on a standard versus trehalose diet. The aim of these experiments was to determine whether trehalose, an anti-freeze compound, lowered the CTmin of FCM. Lowering the CTmin of FCM would be beneficial for the management of FCM (a crop pest). Thereafter, we perform bootstrap re-sampling of the data, and calculate summary statistics to evaluate whether testing additional individuals is required for this experiment.In this study, we may be interested in whether (1) diet treament had an effect on FCM CTmin (i.e. do FCM fed on a trehalose diet have lower CTmin's than FCM fed on a standard artificial diet?), and (2) if so, what is the magnitude (effect size) of the diet treatment (i.e. by how much do the CTmin's differ between standard vs trehalose diets?)
+Here, let's subset the data to only the first 15 individuals tested per *Eccritotarsus* species, perform bootstrap re-sampling of the data, and calculate summary statistics to evaluate whether testing additional individuals is required for this experiment.  
 
+Keep in mind that the aim of this experiment was to evaluate if *Eccritotarsus eichhorniae* has a lower CTmin than *Eccritotarsus catarinensis*, as *E. eichhorniae* needs to be able to tolerate the cold temperatures at inland sites, where the current biocontrol agent (*E. catarinensis*) performs sub-optimally. 
 
 ```{r process_data, message = FALSE}
 # Subset data 
 raw_data_ex <- raw_data %>%
-  dplyr::filter(insect_sp %in% c("Thaumatotibia leucotreta_std_diet_CO_30",
-                                 "Thaumatotibia leucotreta_tre_diet_CO_30"))
+  dplyr::filter(insect_sp %in% c("Eccritotarsus catarinensis_QTG",
+                                 "Eccritotarsus eichhorniae_QTG"))
 
-# Let's assume we only had the first 20 samples (n = 20), for each species
+# Let's assume we only had the first 15 samples (n = 15), for each species
 raw_data_ex <- raw_data_ex %>%
-  dplyr::filter(between(sample_size, 1, 20))
+  dplyr::filter(between(sample_size, 1, 15))
 
-# Check subset worked (n = 20 per species)
+# Check subset worked (n = 15 per species)
 raw_data_ex %>% dplyr::count(insect_sp)
 ```
 
 ### Use `ThermalSampleR` to evaluate sample size required 
 
-```{r bootstrap}
+```{r bootstrap, cache = TRUE}
 # Set reproducible seed 
 set.seed(2012)
 
@@ -83,9 +84,9 @@ sims_15 <- ThermalSampleR::boot_two(
   # Column name containing species ID's 
   groups_col = col,
   # Name of first species
-  group1 = "Thaumatotibia leucotreta_std_diet_CO_30",
+  group1 = "Eccritotarsus catarinensis_QTG",
   # Name of second species
-  group2 = "Thaumatotibia leucotreta_tre_diet_CO_30",
+  group2 = "Eccritotarsus eichhorniae_QTG",
   # Column name of thermal limits data
   response= ct_val,
   # Sample size to extrapolate towards
@@ -99,22 +100,22 @@ sims_15 <- ThermalSampleR::boot_two(
 
 ```{r make_figure}
 # Plot bootstrap samples 
-fig6 <- ThermalSampleR::plot_two_groups(
+fig4 <- ThermalSampleR::plot_two_groups(
   # Data frame containing bootstrap re-samples
   x = sims_15,
   # Minimum number of samples to evaluate 
   n_min = 3,
   # How many individuals were tested? 
-  n_max = 20,
-  legend.position = c(0.7, 0.85)) 
-fig6
+  n_max = 15,
+  legend.position = c(0.7, 0.2)) 
+fig4
 ```
 
 ### Save figure to PC   
 
 ```{r save_figure}
 # Save figure to file 
-ggplot2::ggsave(here::here("./figures/figure6.png"), 
-                width = 6, 
-                height = 6)
+ggplot2::ggsave(here::here("./figures/figure_4.png"), 
+                width = 8, 
+                height = 5)
 ```
